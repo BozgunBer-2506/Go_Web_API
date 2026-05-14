@@ -123,6 +123,8 @@
       transition: all .2s ease;
     }
     .flight-card:hover { border-color: #c7d2fe; box-shadow: 0 8px 40px rgba(99,102,241,.1); }
+    .flight-filter-btn.active { background: white; color: #4338ca; box-shadow: 0 1px 6px rgba(0,0,0,.1); font-weight: 700; }
+    .car-filter.active { background: white; color: #4338ca; box-shadow: 0 1px 6px rgba(0,0,0,.1); font-weight: 700; }
     .dot-line::before, .dot-line::after {
       content: ''; display: block; width: 8px; height: 8px;
       border-radius: 50%; border: 2px solid #6366f1; background: white; flex-shrink: 0;
@@ -134,6 +136,53 @@
 
 <!-- Toast -->
 <div id="toast" class="toast"></div>
+
+<!-- Hotel Detail Modal -->
+<div id="hotel-detail-modal" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+  style="background:rgba(15,15,30,0.75);backdrop-filter:blur(8px)"
+  onclick="if(event.target===this)closeHotelDetail()">
+  <div class="bg-white w-full sm:rounded-3xl shadow-2xl overflow-hidden flex flex-col" style="max-width:680px;max-height:92vh" onclick="event.stopPropagation()">
+    <!-- Hero image -->
+    <div class="relative shrink-0" style="height:260px;background:linear-gradient(135deg,#312e81,#6366f1)">
+      <img id="hd-photo" src="" alt="" class="w-full h-full object-cover" onerror="this.style.display='none'" />
+      <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.5) 0%,transparent 50%)"></div>
+      <button onclick="closeHotelDetail()" class="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/40 hover:bg-black/60 flex items-center justify-center text-white text-xl transition-colors">&times;</button>
+      <div class="absolute bottom-4 left-5">
+        <div id="hd-stars" class="text-amber-400 text-sm font-bold mb-1"></div>
+        <h2 id="hd-name" class="text-white font-extrabold text-2xl leading-tight"></h2>
+      </div>
+    </div>
+
+    <div class="overflow-y-auto flex-1 p-6">
+      <!-- Rating + quick facts -->
+      <div class="flex items-center gap-4 mb-5 pb-5 border-b border-gray-100">
+        <div class="flex items-center gap-2">
+          <span id="hd-score" class="text-white text-sm font-extrabold px-3 py-1.5 rounded-xl" style="background:#4f46e5"></span>
+          <div>
+            <p id="hd-ratingword" class="text-sm font-bold text-gray-900"></p>
+            <p id="hd-reviews" class="text-xs text-gray-400"></p>
+          </div>
+        </div>
+        <div class="flex-1 flex flex-wrap gap-2" id="hd-badges"></div>
+      </div>
+
+      <!-- Description -->
+      <p id="hd-desc" class="text-sm text-gray-600 leading-relaxed mb-6"></p>
+
+      <!-- Amenities -->
+      <div class="mb-6">
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Amenities</p>
+        <div id="hd-amenities" class="grid grid-cols-2 sm:grid-cols-3 gap-2"></div>
+      </div>
+
+      <!-- Room options -->
+      <div class="mb-6">
+        <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mb-3">Available Rooms</p>
+        <div id="hd-rooms" class="flex flex-col gap-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- Booking Modal -->
 <div id="booking-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4"
@@ -640,10 +689,18 @@
   {{if .Hotels}}
   <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
     {{range .Hotels}}
-    <div class="bg-white rounded-3xl shadow-sm overflow-hidden flex flex-col card-hover border border-gray-100">
-      <div class="h-48 relative overflow-hidden" style="background:linear-gradient(135deg,#312e81,#6366f1)">
+    <div class="bg-white rounded-3xl shadow-sm overflow-hidden flex flex-col card-hover border border-gray-100 cursor-pointer hotel-card"
+      data-id="{{.HotelID}}"
+      data-name="{{.HotelName}}"
+      data-price="{{printf "%.0f" .Price}}"
+      data-photo="{{.PhotoURL}}"
+      data-stars="{{.Stars}}"
+      data-rating="{{printf "%.1f" .Rating}}"
+      data-ratingword="{{.RatingWord}}"
+      onclick="openHotelDetail(this)">
+      <div class="h-52 relative overflow-hidden" style="background:linear-gradient(135deg,#312e81,#6366f1)">
         {{if .PhotoURL}}
-        <img src="{{.PhotoURL}}" alt="{{.HotelName}}" class="w-full h-full object-cover" onerror="this.style.display='none'" loading="lazy" />
+        <img src="{{.PhotoURL}}" alt="{{.HotelName}}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" onerror="this.style.display='none'" loading="lazy" />
         {{end}}
         {{if .Stars}}
         <span class="absolute top-3 left-3 bg-white/90 backdrop-blur text-amber-500 text-xs font-bold px-2.5 py-1 rounded-full shadow">
@@ -651,35 +708,22 @@
         </span>
         {{end}}
         {{if .Rating}}
-        <span class="absolute top-3 right-3 bg-white/90 backdrop-blur text-gray-800 text-xs font-bold px-2.5 py-1 rounded-full shadow">
-          ⭐ {{printf "%.1f" .Rating}}
+        <span class="absolute top-3 right-3 bg-indigo-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow">
+          {{printf "%.1f" .Rating}}
         </span>
         {{end}}
+        <div class="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
       </div>
       <div class="p-5 flex flex-col flex-1">
-        <h3 class="text-sm font-bold text-gray-900 leading-snug mb-4 line-clamp-2">{{.HotelName}}</h3>
+        <p class="text-xs text-gray-400 mb-1">{{.RatingWord}} · {{printf "%.1f" .Rating}}/10</p>
+        <h3 class="text-sm font-bold text-gray-900 leading-snug mb-3 line-clamp-2">{{.HotelName}}</h3>
         <div class="mt-auto flex items-center justify-between">
           <div>
             <span class="text-2xl font-extrabold text-gray-900">${{printf "%.0f" .Price}}</span>
             <span class="text-xs text-gray-400 ml-1">/ night</span>
           </div>
+          <span class="text-xs text-indigo-600 font-semibold border border-indigo-200 px-3 py-1.5 rounded-xl hover:bg-indigo-50 transition-colors">View →</span>
         </div>
-        <!-- Primary: Booking.com affiliate deep link -->
-        <a href="https://www.booking.com/searchresults.html?ss={{.HotelName | urlquery}}&aid=YOUR_AFF_ID"
-          target="_blank" rel="noopener sponsored"
-          class="mt-4 block w-full text-center text-white text-sm font-bold py-3 rounded-xl transition-all"
-          style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 16px rgba(79,70,229,.25)">
-          Book on Booking.com ↗
-        </a>
-        <!-- Secondary: internal booking -->
-        <button
-          class="mt-2 w-full text-indigo-600 text-xs font-semibold py-2 rounded-xl border border-indigo-200 hover:bg-indigo-50 transition-colors book-btn"
-          data-id="{{.HotelID}}"
-          data-name="{{.HotelName}}"
-          data-price="{{printf "%.0f" .Price}}"
-          data-photo="{{.PhotoURL}}">
-          Reserve directly
-        </button>
       </div>
     </div>
     {{end}}
@@ -687,13 +731,8 @@
   {{else}}
   <div class="text-center py-24 max-w-md mx-auto">
     <div class="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">🏨</div>
-    <h3 class="text-xl font-bold text-gray-900 mb-2">Search hotels for "{{.City}}"</h3>
-    <p class="text-sm text-gray-400 mb-8">View real-time prices and availability on Skyscanner</p>
-    <a href="https://www.hotels.com/Hotel-Search?q-destination={{.City | urlquery}}&q-check-in={{.Checkin}}&q-check-out={{.Checkout}}&q-rooms=1&q-room-0-adults={{or .Adults "2"}}" target="_blank"
-      class="inline-flex items-center gap-2 text-white font-bold px-8 py-3.5 rounded-2xl transition-all text-sm"
-      style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 20px rgba(79,70,229,.35)">
-      Search on Hotels.com ↗
-    </a>
+    <h3 class="text-xl font-bold text-gray-900 mb-2">No results for "{{.City}}"</h3>
+    <p class="text-sm text-gray-400 mb-4">Try a different city name or check the spelling.</p>
   </div>
   {{end}}
   {{else}}
@@ -747,7 +786,7 @@
       </a>
       <!-- New York -->
       <a href="/?q=New+York" class="group relative rounded-3xl overflow-hidden aspect-[4/5] block shadow-sm hover:shadow-xl transition-shadow">
-        <img src="https://images.unsplash.com/photo-1485871981521-5b1fd3805571?w=500&q=85" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="New York" loading="lazy" />
+        <img src="https://images.unsplash.com/photo-1534430480872-3498386e7856?w=500&q=85" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="New York" loading="lazy" />
         <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.65) 0%,transparent 50%)"></div>
         <div class="absolute bottom-0 left-0 p-4">
           <p class="text-white font-extrabold text-lg leading-tight">New York</p>
@@ -786,35 +825,93 @@
 
   <!-- ── PROPERTY TYPES ─────────────────────────────────────────────── -->
   <div class="mb-14">
-    <h2 class="text-2xl font-extrabold text-gray-900 mb-2">Browse by property type</h2>
-    <p class="text-sm text-gray-400 mb-6">Find the perfect place, whatever your style</p>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <a href="/?q=London" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff)">🏨</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Hotels</p>
-          <p class="text-xs text-gray-400 mt-0.5">Classic stays, all amenities</p>
+    <div class="flex items-end justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-extrabold text-gray-900">Browse by property type</h2>
+        <p class="text-sm text-gray-400 mt-1">Find the perfect place, whatever your style</p>
+      </div>
+    </div>
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-5">
+      <!-- Hotels -->
+      <a href="/?q=London" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all" style="height:220px">
+        <img src="https://images.unsplash.com/photo-1564501049412-61c2a3083791?w=500&q=85" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Hotels" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(15,10,40,.78) 0%,rgba(30,27,75,.2) 55%,transparent 100%)"></div>
+        <div class="absolute top-4 left-4">
+          <span class="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">Hotels</span>
+        </div>
+        <div class="absolute bottom-0 left-0 p-5">
+          <p class="text-white font-extrabold text-lg leading-tight mb-0.5">City Hotels</p>
+          <p class="text-white/65 text-xs">Full service · Concierge · Breakfast</p>
+          <p class="text-indigo-300 text-xs font-semibold mt-2">520,000+ properties →</p>
         </div>
       </a>
-      <a href="/?q=Paris" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#fef3c7,#fde68a)">🏠</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Apartments</p>
-          <p class="text-xs text-gray-400 mt-0.5">Feel at home abroad</p>
+      <!-- Apartments -->
+      <a href="/?q=Amsterdam" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all" style="height:220px">
+        <img src="https://images.unsplash.com/photo-1522708323590-d24dbb6b0267?w=500&q=85" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Apartments" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(15,10,40,.78) 0%,rgba(30,27,75,.2) 55%,transparent 100%)"></div>
+        <div class="absolute top-4 left-4">
+          <span class="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">Apartments</span>
+        </div>
+        <div class="absolute bottom-0 left-0 p-5">
+          <p class="text-white font-extrabold text-lg leading-tight mb-0.5">Apartments</p>
+          <p class="text-white/65 text-xs">Kitchen · Living room · Feels like home</p>
+          <p class="text-indigo-300 text-xs font-semibold mt-2">310,000+ properties →</p>
         </div>
       </a>
-      <a href="/?q=Maldives" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0)">🌴</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Resorts</p>
-          <p class="text-xs text-gray-400 mt-0.5">Luxury beach &amp; spa getaways</p>
+      <!-- Resorts -->
+      <a href="/?q=Maldives" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all" style="height:220px">
+        <img src="https://images.unsplash.com/photo-1573843981267-be1999ff37cd?w=500&q=85" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Resorts" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(15,10,40,.78) 0%,rgba(30,27,75,.2) 55%,transparent 100%)"></div>
+        <div class="absolute top-4 left-4">
+          <span class="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">Resorts</span>
+        </div>
+        <div class="absolute bottom-0 left-0 p-5">
+          <p class="text-white font-extrabold text-lg leading-tight mb-0.5">Beach Resorts</p>
+          <p class="text-white/65 text-xs">Overwater bungalows · Infinity pools</p>
+          <p class="text-indigo-300 text-xs font-semibold mt-2">42,000+ properties →</p>
         </div>
       </a>
-      <a href="/?q=Tuscany" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#fce7f3,#fbcfe8)">🏡</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Villas</p>
-          <p class="text-xs text-gray-400 mt-0.5">Private, spacious, exclusive</p>
+      <!-- Villas -->
+      <a href="/?q=Tuscany" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all" style="height:220px">
+        <img src="https://images.unsplash.com/photo-1613977257363-707ba9348227?w=500&q=85" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Villas" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(15,10,40,.78) 0%,rgba(30,27,75,.2) 55%,transparent 100%)"></div>
+        <div class="absolute top-4 left-4">
+          <span class="bg-white/20 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full border border-white/20">Villas</span>
+        </div>
+        <div class="absolute bottom-0 left-0 p-5">
+          <p class="text-white font-extrabold text-lg leading-tight mb-0.5">Private Villas</p>
+          <p class="text-white/65 text-xs">Pool · Garden · Full privacy</p>
+          <p class="text-indigo-300 text-xs font-semibold mt-2">89,000+ properties →</p>
+        </div>
+      </a>
+    </div>
+    <!-- Second row: wider cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-5 mt-5">
+      <!-- Hostels -->
+      <a href="/?q=Prague" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex items-end" style="height:140px">
+        <img src="https://images.unsplash.com/photo-1555854877-bab0e564b8d5?w=600&q=85" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Hostels" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to right,rgba(15,10,40,.75) 0%,transparent 70%)"></div>
+        <div class="relative p-5">
+          <p class="text-white font-extrabold text-base">Hostels &amp; Budget</p>
+          <p class="text-white/60 text-xs mt-0.5">Social atmosphere · From $12/night</p>
+        </div>
+      </a>
+      <!-- Boutique -->
+      <a href="/?q=Florence" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex items-end" style="height:140px">
+        <img src="https://images.unsplash.com/photo-1590490360182-c33d57733427?w=600&q=85" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Boutique" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to right,rgba(15,10,40,.75) 0%,transparent 70%)"></div>
+        <div class="relative p-5">
+          <p class="text-white font-extrabold text-base">Boutique Hotels</p>
+          <p class="text-white/60 text-xs mt-0.5">Unique character · Local design</p>
+        </div>
+      </a>
+      <!-- Cabins -->
+      <a href="/?q=Lapland" class="group relative rounded-3xl overflow-hidden shadow-sm hover:shadow-xl transition-all flex items-end" style="height:140px">
+        <img src="https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=600&q=85" class="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Cabins" loading="lazy" />
+        <div class="absolute inset-0" style="background:linear-gradient(to right,rgba(15,10,40,.75) 0%,transparent 70%)"></div>
+        <div class="relative p-5">
+          <p class="text-white font-extrabold text-base">Cabins &amp; Chalets</p>
+          <p class="text-white/60 text-xs mt-0.5">Mountains · Nature · Fireside</p>
         </div>
       </a>
     </div>
@@ -985,126 +1082,96 @@
 
   <!-- CARS -->
   {{if eq .Tab "cars"}}
+
   {{if .PickupCity}}
-  <!-- Search performed - show deep link -->
-  <div class="flex items-center justify-between mb-8">
+  <!-- ── SEARCH RESULTS ─────────────────────────────────────────────────── -->
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
     <div>
       <h2 class="text-2xl font-extrabold text-gray-900">Cars in <span class="text-indigo-600">{{.PickupCity}}</span></h2>
-      <p class="text-sm text-gray-400 mt-1">{{.PickupDate}} — {{.DropoffDate}}</p>
+      <p class="text-sm text-gray-400 mt-1">{{.PickupDate}} — {{.DropoffDate}} · Driver age {{.DriverAge}}</p>
     </div>
   </div>
-  <div class="text-center py-16 bg-white rounded-3xl border border-gray-100 shadow-sm">
-    <div class="w-20 h-20 bg-indigo-50 rounded-3xl flex items-center justify-center text-4xl mx-auto mb-6">🚗</div>
-    <h3 class="text-xl font-bold text-gray-900 mb-2">Find the best car deals</h3>
-    <p class="text-sm text-gray-400 mb-8 max-w-sm mx-auto">We're comparing prices from Hertz, Avis, Enterprise and 400+ more for <strong>{{.PickupCity}}</strong></p>
-    <a href="https://www.rentalcars.com/SearchResults.do?pickUpPlace={{.PickupCity | urlquery}}&pickUpDate={{.PickupDate}}&dropOffDate={{.DropoffDate}}&driverAge={{.DriverAge}}"
-      target="_blank" rel="noopener"
-      class="inline-flex items-center gap-2 text-white font-bold px-8 py-3.5 rounded-2xl transition-all text-sm"
-      style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 20px rgba(79,70,229,.35)">
-      Search on Rentalcars.com ↗
-    </a>
-    <p class="text-xs text-gray-400 mt-4">Opens in a new tab - compare and book directly with the provider</p>
+  <!-- Filter bar -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-center">
+    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">Filter:</span>
+    <div class="flex items-center gap-1 bg-slate-50 rounded-xl p-1">
+      <button onclick="filterCars('all')" id="cf-all" class="car-filter active text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">All</button>
+      <button onclick="filterCars('economy')" id="cf-economy" class="car-filter text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Economy</button>
+      <button onclick="filterCars('suv')" id="cf-suv" class="car-filter text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">SUV</button>
+      <button onclick="filterCars('luxury')" id="cf-luxury" class="car-filter text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Luxury</button>
+    </div>
+    <div class="flex items-center gap-1 bg-slate-50 rounded-xl p-1">
+      <button onclick="filterCars('auto')" id="cf-auto" class="car-filter text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Automatic</button>
+      <button onclick="filterCars('manual')" id="cf-manual" class="car-filter text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Manual</button>
+    </div>
+    <div class="flex items-center gap-2 ml-auto">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Sort:</span>
+      <select onchange="sortCars(this.value)" class="text-xs font-semibold text-gray-700 bg-slate-50 border-none rounded-xl px-3 py-2 outline-none cursor-pointer">
+        <option value="price">Price: low to high</option>
+        <option value="price-desc">Price: high to low</option>
+        <option value="seats">Most seats</option>
+      </select>
+    </div>
   </div>
+  <div id="cars-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {{template "car-cards" .}}
+  </div>
+
   {{else}}
-  <!-- Landing page -->
-  <!-- Car types -->
+  <!-- ── LANDING PAGE ────────────────────────────────────────────────────── -->
+  <!-- Trusted brands -->
+  <div class="mb-12">
+    <p class="text-xs font-bold text-gray-400 uppercase tracking-widest text-center mb-6">Our trusted rental partners</p>
+    <div class="grid grid-cols-3 sm:grid-cols-6 gap-4">
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm h-14 flex items-center justify-center"><span class="text-sm font-black text-yellow-500 tracking-tight">HERTZ</span></div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm h-14 flex items-center justify-center"><span class="text-sm font-black text-red-600 tracking-tight">AVIS</span></div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm h-14 flex items-center justify-center"><span class="text-sm font-black text-orange-500 tracking-tight">SIXT</span></div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm h-14 flex items-center justify-center"><span class="text-sm font-black text-green-600 tracking-tight">EUROPCAR</span></div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm h-14 flex items-center justify-center"><span class="text-sm font-black text-indigo-600 tracking-tight">ENTERPRISE</span></div>
+      <div class="bg-white rounded-2xl border border-gray-100 shadow-sm h-14 flex items-center justify-center"><span class="text-sm font-black text-blue-500 tracking-tight">BUDGET</span></div>
+    </div>
+  </div>
+  <!-- Featured deals -->
   <div class="mb-14">
-    <h2 class="text-2xl font-extrabold text-gray-900 mb-2">Browse by car type</h2>
-    <p class="text-sm text-gray-400 mb-6">Whatever your trip needs, we've got the right car</p>
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-      <a href="/cars?pickup=London&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#eef2ff,#e0e7ff)">🚗</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Economy</p>
-          <p class="text-xs text-gray-400 mt-0.5">Affordable &amp; fuel-efficient</p>
-        </div>
-      </a>
-      <a href="/cars?pickup=Paris&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#fef3c7,#fde68a)">🚙</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">SUV</p>
-          <p class="text-xs text-gray-400 mt-0.5">Space for the whole family</p>
-        </div>
-      </a>
-      <a href="/cars?pickup=Dubai&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#d1fae5,#a7f3d0)">🏎️</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Luxury</p>
-          <p class="text-xs text-gray-400 mt-0.5">Premium brands, premium feel</p>
-        </div>
-      </a>
-      <a href="/cars?pickup=New+York&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group bg-white rounded-2xl border border-gray-100 shadow-sm hover:border-indigo-300 hover:shadow-md transition-all p-5 flex flex-col items-center text-center gap-3">
-        <div class="w-14 h-14 rounded-2xl flex items-center justify-center text-3xl" style="background:linear-gradient(135deg,#fce7f3,#fbcfe8)">🚐</div>
-        <div>
-          <p class="font-bold text-gray-900 text-sm">Van &amp; Minivan</p>
-          <p class="text-xs text-gray-400 mt-0.5">Perfect for groups</p>
-        </div>
-      </a>
+    <div class="flex items-end justify-between mb-6">
+      <div>
+        <h2 class="text-2xl font-extrabold text-gray-900">Top deals this week</h2>
+        <p class="text-sm text-gray-400 mt-1">Best-value rentals across popular destinations</p>
+      </div>
+      <span class="text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">Free cancellation</span>
+    </div>
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      {{template "car-cards" .}}
     </div>
   </div>
 
-  <!-- Popular pickup locations -->
-  <div class="mb-14">
-    <h2 class="text-2xl font-extrabold text-gray-900 mb-2">Popular pickup locations</h2>
-    <p class="text-sm text-gray-400 mb-6">Top destinations for car rentals right now</p>
-    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
-      <a href="/cars?pickup=London&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow" style="height:160px">
-        <img src="https://images.unsplash.com/photo-1486299267070-83823f5448dd?w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="London" loading="lazy" />
-        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)"></div>
-        <div class="absolute bottom-0 left-0 p-3">
-          <p class="text-white font-bold text-sm">London</p>
-          <p class="text-white/70 text-xs">From $28/day</p>
-        </div>
-      </a>
-      <a href="/cars?pickup=New+York&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow" style="height:160px">
-        <img src="https://images.unsplash.com/photo-1485871981521-5b1fd3805571?w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="New York" loading="lazy" />
-        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)"></div>
-        <div class="absolute bottom-0 left-0 p-3">
-          <p class="text-white font-bold text-sm">New York</p>
-          <p class="text-white/70 text-xs">From $35/day</p>
-        </div>
-      </a>
-      <a href="/cars?pickup=Dubai&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow" style="height:160px">
-        <img src="https://images.unsplash.com/photo-1512632578888-169bbbc64f33?w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Dubai" loading="lazy" />
-        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)"></div>
-        <div class="absolute bottom-0 left-0 p-3">
-          <p class="text-white font-bold text-sm">Dubai</p>
-          <p class="text-white/70 text-xs">From $22/day</p>
-        </div>
-      </a>
-      <a href="/cars?pickup=Barcelona&pickupDate={{.PickupDate}}&dropoffDate={{.DropoffDate}}&age={{.DriverAge}}" class="group relative rounded-2xl overflow-hidden shadow-sm hover:shadow-lg transition-shadow" style="height:160px">
-        <img src="https://images.unsplash.com/photo-1464790719320-516ecd75af6c?w=400&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Barcelona" loading="lazy" />
-        <div class="absolute inset-0" style="background:linear-gradient(to top,rgba(0,0,0,.6) 0%,transparent 55%)"></div>
-        <div class="absolute bottom-0 left-0 p-3">
-          <p class="text-white font-bold text-sm">Barcelona</p>
-          <p class="text-white/70 text-xs">From $19/day</p>
-        </div>
-      </a>
-    </div>
-  </div>
-
-  <!-- Why rent with us -->
+  <!-- Why section -->
   <div class="rounded-3xl overflow-hidden mb-14" style="background:linear-gradient(135deg,#1e1b4b,#4338ca)">
     <div class="p-10 sm:p-14">
       <div class="text-center mb-10">
         <h2 class="text-3xl font-extrabold text-white mb-2">Why book your car with TravelMirror</h2>
-        <p class="text-indigo-200 text-sm">We compare 400+ rental companies for the best price</p>
+        <p class="text-indigo-200 text-sm">We compare Hertz, Avis, Sixt, Europcar and 400+ more in seconds</p>
       </div>
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-8">
+      <div class="grid grid-cols-1 sm:grid-cols-4 gap-8">
         <div class="text-center">
-          <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4" style="background:rgba(255,255,255,.12)">💰</div>
-          <h3 class="text-white font-extrabold text-base mb-2">Best price guarantee</h3>
-          <p class="text-indigo-200 text-sm">We search Hertz, Avis, Sixt, Europcar and hundreds more in seconds.</p>
+          <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-3" style="background:rgba(255,255,255,.12)">💰</div>
+          <h3 class="text-white font-bold text-sm mb-1">Best price</h3>
+          <p class="text-indigo-200 text-xs">We find the lowest rate every time.</p>
         </div>
         <div class="text-center">
-          <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4" style="background:rgba(255,255,255,.12)">🆓</div>
-          <h3 class="text-white font-extrabold text-base mb-2">Free cancellation</h3>
-          <p class="text-indigo-200 text-sm">Most rentals include free cancellation. Plans change — we get it.</p>
+          <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-3" style="background:rgba(255,255,255,.12)">🆓</div>
+          <h3 class="text-white font-bold text-sm mb-1">Free cancellation</h3>
+          <p class="text-indigo-200 text-xs">Cancel for free on most bookings.</p>
         </div>
         <div class="text-center">
-          <div class="w-14 h-14 rounded-2xl mx-auto flex items-center justify-center text-3xl mb-4" style="background:rgba(255,255,255,.12)">🛡️</div>
-          <h3 class="text-white font-extrabold text-base mb-2">No hidden fees</h3>
-          <p class="text-indigo-200 text-sm">The price you see includes taxes and mandatory charges. No surprises.</p>
+          <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-3" style="background:rgba(255,255,255,.12)">🛡️</div>
+          <h3 class="text-white font-bold text-sm mb-1">No hidden fees</h3>
+          <p class="text-indigo-200 text-xs">Price includes taxes. No surprises.</p>
+        </div>
+        <div class="text-center">
+          <div class="w-12 h-12 rounded-2xl mx-auto flex items-center justify-center text-2xl mb-3" style="background:rgba(255,255,255,.12)">🎧</div>
+          <h3 class="text-white font-bold text-sm mb-1">24/7 support</h3>
+          <p class="text-indigo-200 text-xs">Real humans, any time of day.</p>
         </div>
       </div>
     </div>
@@ -1140,7 +1207,7 @@
   {{end}}
 
   {{else}}
-  <div class="flex items-center justify-between mb-8">
+  <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
     <div>
       <h2 class="text-2xl font-extrabold text-gray-900">
         <span class="text-indigo-600">{{if .FromCity}}{{.FromCity}}{{else}}{{.FromSkyID}}{{end}}</span>
@@ -1151,14 +1218,47 @@
         <span class="text-indigo-600">{{if .FromCity}}{{.FromCity}}{{else}}{{.FromSkyID}}{{end}}</span>
         {{end}}
       </h2>
-      <p class="text-sm text-gray-400 mt-1">{{len .Flights}} flights found</p>
+      <p class="text-sm text-gray-400 mt-1"><span id="flights-count">{{len .Flights}}</span> flights found</p>
     </div>
   </div>
+
   {{if .Flights}}
-  <div class="flex flex-col gap-3">
+  <!-- Filter bar -->
+  <div class="bg-white rounded-2xl border border-gray-100 shadow-sm p-4 mb-5 flex flex-wrap gap-3 items-center">
+    <span class="text-xs font-bold text-gray-400 uppercase tracking-widest shrink-0">Filter:</span>
+    <!-- Stops -->
+    <div class="flex items-center gap-1 bg-slate-50 rounded-xl p-1">
+      <button onclick="setFlightFilter('stops','any')" id="f-stops-any" class="flight-filter-btn active text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">Any</button>
+      <button onclick="setFlightFilter('stops','0')" id="f-stops-0" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Direct only</button>
+      <button onclick="setFlightFilter('stops','1')" id="f-stops-1" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">1 stop</button>
+    </div>
+    <!-- Depart time -->
+    <div class="flex items-center gap-1 bg-slate-50 rounded-xl p-1">
+      <button onclick="setFlightFilter('time','any')" id="f-time-any" class="flight-filter-btn active text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">Any time</button>
+      <button onclick="setFlightFilter('time','morning')" id="f-time-morning" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Morning</button>
+      <button onclick="setFlightFilter('time','afternoon')" id="f-time-afternoon" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Afternoon</button>
+      <button onclick="setFlightFilter('time','evening')" id="f-time-evening" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Evening</button>
+    </div>
+    <!-- Sort -->
+    <div class="flex items-center gap-2 ml-auto">
+      <span class="text-xs font-bold text-gray-400 uppercase tracking-widest">Sort:</span>
+      <div class="flex items-center gap-1 bg-slate-50 rounded-xl p-1">
+        <button onclick="sortFlights('price')" id="f-sort-price" class="flight-filter-btn active text-xs font-semibold px-3 py-1.5 rounded-lg transition-all">Cheapest</button>
+        <button onclick="sortFlights('duration')" id="f-sort-duration" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Fastest</button>
+        <button onclick="sortFlights('depart')" id="f-sort-depart" class="flight-filter-btn text-xs font-semibold px-3 py-1.5 rounded-lg transition-all text-gray-500">Earliest</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="flights-list" class="flex flex-col gap-3">
     {{range .Flights}}
     {{template "flight-card" .}}
     {{end}}
+  </div>
+  <div id="flights-empty" class="hidden text-center py-16 bg-white rounded-3xl border border-gray-100">
+    <div class="text-3xl mb-3">🔍</div>
+    <p class="font-bold text-gray-700 mb-1">No flights match your filters</p>
+    <p class="text-sm text-gray-400">Try removing some filters</p>
   </div>
   {{else if not .Error}}
   <div class="text-center py-24 max-w-md mx-auto">
@@ -1171,8 +1271,153 @@
 
 </main>
 
+{{define "car-cards"}}
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden card-hover cursor-pointer car-card" data-type="economy" data-trans="auto" data-seats="5" data-price="29" onclick="openCarBooking(this)" data-car="Toyota Yaris 2024" data-provider="Hertz" data-pickup="{{$.PickupCity}}" data-pickupdate="{{$.PickupDate}}" data-dropoff="{{$.DropoffDate}}">
+  <div class="relative h-44 overflow-hidden bg-slate-100">
+    <img src="https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?w=600&q=80" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" alt="Toyota Yaris" loading="lazy" />
+    <span class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full text-indigo-700 border border-indigo-200" style="background:rgba(238,242,255,.95)">Economy</span>
+    <span class="absolute top-3 right-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">Free cancel</span>
+  </div>
+  <div class="p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div><p class="font-extrabold text-gray-900">Toyota Yaris 2024</p><p class="text-xs text-gray-400 mt-0.5">or similar</p></div>
+      <div class="text-right"><p class="text-2xl font-extrabold text-gray-900">$29</p><p class="text-xs text-gray-400">/ day</p></div>
+    </div>
+    <div class="flex gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>5 seats</span>
+      <span>4 doors</span>
+      <span>Automatic</span>
+      <span>A/C</span>
+    </div>
+    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-400">HERTZ</span>
+      <button class="text-xs font-bold text-white px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Reserve</button>
+    </div>
+  </div>
+</div>
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden card-hover cursor-pointer car-card" data-type="compact" data-trans="auto" data-seats="5" data-price="38" onclick="openCarBooking(this)" data-car="Volkswagen Golf 2024" data-provider="Avis" data-pickup="{{$.PickupCity}}" data-pickupdate="{{$.PickupDate}}" data-dropoff="{{$.DropoffDate}}">
+  <div class="relative h-44 overflow-hidden bg-slate-100">
+    <img src="https://images.unsplash.com/photo-1606664515524-ed2f786a0bd6?w=600&q=80" class="w-full h-full object-cover transition-transform duration-500" alt="Volkswagen Golf" loading="lazy" />
+    <span class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full text-sky-700 border border-sky-200" style="background:rgba(240,249,255,.95)">Compact</span>
+    <span class="absolute top-3 right-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">Free cancel</span>
+  </div>
+  <div class="p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div><p class="font-extrabold text-gray-900">Volkswagen Golf 2024</p><p class="text-xs text-gray-400 mt-0.5">or similar</p></div>
+      <div class="text-right"><p class="text-2xl font-extrabold text-gray-900">$38</p><p class="text-xs text-gray-400">/ day</p></div>
+    </div>
+    <div class="flex gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>5 seats</span>
+      <span>4 doors</span>
+      <span>Automatic</span>
+      <span>A/C</span>
+    </div>
+    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-400">AVIS</span>
+      <button class="text-xs font-bold text-white px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Reserve</button>
+    </div>
+  </div>
+</div>
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden card-hover cursor-pointer car-card" data-type="suv" data-trans="auto" data-seats="7" data-price="62" onclick="openCarBooking(this)" data-car="Toyota RAV4 2024" data-provider="Sixt" data-pickup="{{$.PickupCity}}" data-pickupdate="{{$.PickupDate}}" data-dropoff="{{$.DropoffDate}}">
+  <div class="relative h-44 overflow-hidden bg-slate-100">
+    <img src="https://images.unsplash.com/photo-1519641471654-76ce0107ad1b?w=600&q=80" class="w-full h-full object-cover transition-transform duration-500" alt="Toyota RAV4" loading="lazy" />
+    <span class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full text-amber-700 border border-amber-200" style="background:rgba(255,251,235,.95)">SUV</span>
+    <span class="absolute top-3 right-3 text-xs font-bold text-amber-700 bg-amber-50 border border-amber-200 px-2.5 py-1 rounded-full">Unlimited km</span>
+  </div>
+  <div class="p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div><p class="font-extrabold text-gray-900">Toyota RAV4 2024</p><p class="text-xs text-gray-400 mt-0.5">or similar</p></div>
+      <div class="text-right"><p class="text-2xl font-extrabold text-gray-900">$62</p><p class="text-xs text-gray-400">/ day</p></div>
+    </div>
+    <div class="flex gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>7 seats</span>
+      <span>5 doors</span>
+      <span>Automatic</span>
+      <span>A/C</span>
+    </div>
+    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-400">SIXT</span>
+      <button class="text-xs font-bold text-white px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Reserve</button>
+    </div>
+  </div>
+</div>
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden card-hover cursor-pointer car-card" data-type="luxury" data-trans="auto" data-seats="5" data-price="145" onclick="openCarBooking(this)" data-car="Mercedes-Benz C-Class 2024" data-provider="Europcar" data-pickup="{{$.PickupCity}}" data-pickupdate="{{$.PickupDate}}" data-dropoff="{{$.DropoffDate}}">
+  <div class="relative h-44 overflow-hidden bg-slate-100">
+    <img src="https://images.unsplash.com/photo-1555215695-3004980ad54e?w=600&q=80" class="w-full h-full object-cover transition-transform duration-500" alt="Mercedes C-Class" loading="lazy" />
+    <span class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full text-violet-700 border border-violet-200" style="background:rgba(245,243,255,.95)">Luxury</span>
+    <span class="absolute top-3 right-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">Free cancel</span>
+  </div>
+  <div class="p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div><p class="font-extrabold text-gray-900">Mercedes-Benz C-Class</p><p class="text-xs text-gray-400 mt-0.5">or similar</p></div>
+      <div class="text-right"><p class="text-2xl font-extrabold text-gray-900">$145</p><p class="text-xs text-gray-400">/ day</p></div>
+    </div>
+    <div class="flex gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>5 seats</span>
+      <span>4 doors</span>
+      <span>Automatic</span>
+      <span>Leather A/C</span>
+    </div>
+    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-400">EUROPCAR</span>
+      <button class="text-xs font-bold text-white px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Reserve</button>
+    </div>
+  </div>
+</div>
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden card-hover cursor-pointer car-card" data-type="economy" data-trans="manual" data-seats="5" data-price="24" onclick="openCarBooking(this)" data-car="Fiat 500 2024" data-provider="Budget" data-pickup="{{$.PickupCity}}" data-pickupdate="{{$.PickupDate}}" data-dropoff="{{$.DropoffDate}}">
+  <div class="relative h-44 overflow-hidden bg-slate-100">
+    <img src="https://images.unsplash.com/photo-1568844293986-ca9c5c41f8b3?w=600&q=80" class="w-full h-full object-cover transition-transform duration-500" alt="Fiat 500" loading="lazy" />
+    <span class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full text-indigo-700 border border-indigo-200" style="background:rgba(238,242,255,.95)">Economy</span>
+    <span class="absolute top-3 right-3 text-xs font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2.5 py-1 rounded-full">-20% today</span>
+  </div>
+  <div class="p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div><p class="font-extrabold text-gray-900">Fiat 500 2024</p><p class="text-xs text-gray-400 mt-0.5">or similar</p></div>
+      <div class="text-right"><p class="text-xl line-through text-gray-300 text-sm">$30</p><p class="text-2xl font-extrabold text-gray-900">$24</p><p class="text-xs text-gray-400">/ day</p></div>
+    </div>
+    <div class="flex gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>5 seats</span>
+      <span>3 doors</span>
+      <span>Manual</span>
+      <span>A/C</span>
+    </div>
+    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-400">BUDGET</span>
+      <button class="text-xs font-bold text-white px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Reserve</button>
+    </div>
+  </div>
+</div>
+<div class="bg-white rounded-3xl border border-gray-100 shadow-sm overflow-hidden card-hover cursor-pointer car-card" data-type="suv" data-trans="auto" data-seats="5" data-price="78" onclick="openCarBooking(this)" data-car="BMW X3 2024" data-provider="Hertz" data-pickup="{{$.PickupCity}}" data-pickupdate="{{$.PickupDate}}" data-dropoff="{{$.DropoffDate}}">
+  <div class="relative h-44 overflow-hidden bg-slate-100">
+    <img src="https://images.unsplash.com/photo-1537984822441-cff330075342?w=600&q=80" class="w-full h-full object-cover transition-transform duration-500" alt="BMW X3" loading="lazy" />
+    <span class="absolute top-3 left-3 text-xs font-bold px-2.5 py-1 rounded-full text-amber-700 border border-amber-200" style="background:rgba(255,251,235,.95)">SUV</span>
+    <span class="absolute top-3 right-3 text-xs font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2.5 py-1 rounded-full">Free cancel</span>
+  </div>
+  <div class="p-5">
+    <div class="flex items-start justify-between mb-3">
+      <div><p class="font-extrabold text-gray-900">BMW X3 2024</p><p class="text-xs text-gray-400 mt-0.5">or similar</p></div>
+      <div class="text-right"><p class="text-2xl font-extrabold text-gray-900">$78</p><p class="text-xs text-gray-400">/ day</p></div>
+    </div>
+    <div class="flex gap-4 text-xs text-gray-500 mb-4 flex-wrap">
+      <span class="flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 12c2.7 0 5-2.3 5-5s-2.3-5-5-5-5 2.3-5 5 2.3 5 5 5zm0 2c-3.3 0-10 1.7-10 5v2h20v-2c0-3.3-6.7-5-10-5z"/></svg>5 seats</span>
+      <span>5 doors</span>
+      <span>Automatic</span>
+      <span>A/C</span>
+    </div>
+    <div class="flex items-center justify-between pt-3 border-t border-gray-100">
+      <span class="text-xs font-bold text-gray-400">HERTZ</span>
+      <button class="text-xs font-bold text-white px-5 py-2 rounded-xl" style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Reserve</button>
+    </div>
+  </div>
+</div>
+{{end}}
+
 {{define "flight-card"}}
-<div class="flight-card p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-6">
+<div class="flight-card p-5 sm:p-6 flex flex-col sm:flex-row items-center gap-6"
+  data-stops="{{.Stops}}"
+  data-price="{{printf "%.0f" .Price}}"
+  data-depart="{{.DepartTime}}"
+  data-duration="{{.DurationHours}}">
   <!-- Airline -->
   <div class="flex items-center gap-3 w-40 shrink-0">
     <div class="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center overflow-hidden shrink-0">
@@ -1218,21 +1463,14 @@
       <span class="text-3xl font-extrabold text-gray-900">${{printf "%.0f" .Price}}</span>
       <p class="text-xs text-gray-400">per person</p>
     </div>
-    <!-- Primary: affiliate deep link to Skyscanner -->
-    <a class="block text-center text-white text-sm font-bold px-7 py-2.5 rounded-xl transition-all"
+    <button class="flight-book-btn text-white text-sm font-bold px-7 py-2.5 rounded-xl transition-all"
       style="background:linear-gradient(135deg,#4f46e5,#7c3aed);box-shadow:0 4px 16px rgba(79,70,229,.3)"
-      href="https://www.skyscanner.net/transport/flights/{{.FromCode}}/{{.ToCode}}/"
-      target="_blank" rel="noopener sponsored">
-      Book on Skyscanner ↗
-    </a>
-    <!-- Secondary: internal booking flow -->
-    <button class="flight-book-btn text-indigo-600 text-xs font-semibold px-4 py-1.5 rounded-lg border border-indigo-200 hover:bg-indigo-50 transition-colors"
       data-from="{{.FromCode}}" data-to="{{.ToCode}}"
       data-airline="{{.Airline}}" data-price="{{printf "%.0f" .Price}}"
       data-depart="{{.DepartTime}}" data-arrive="{{.ArriveTime}}"
       data-duration="{{.DurationHours}}h {{.DurationMinutes}}m"
       data-stops="{{.Stops}}">
-      Reserve directly
+      Book Now
     </button>
   </div>
 </div>
@@ -1245,11 +1483,114 @@
       <span class="text-lg">✈</span>
       <span class="font-black text-gray-800">TravelMirror</span>
     </div>
-    <p class="text-xs text-gray-400">© 2026 TravelMirror · Powered by Skyscanner API</p>
+    <p class="text-xs text-gray-400">© 2026 TravelMirror · All rights reserved</p>
   </div>
 </footer>
 
 <script>
+// ── Hotel Detail Modal ────────────────────────────────────────────────────────
+const amenityMap = {
+  3: ['Free Wi-Fi','Air conditioning','Flat-screen TV','Safe deposit box','Daily housekeeping','24h front desk'],
+  4: ['Free Wi-Fi','Air conditioning','Flat-screen TV','Swimming pool','Fitness centre','Restaurant','Bar / Lounge','Room service','Business centre','Free parking'],
+  5: ['Free Wi-Fi','Air conditioning','Flat-screen TV','Indoor pool','Spa & wellness','Fitness centre','Fine dining restaurant','Rooftop bar','24h room service','Concierge','Valet parking','Airport transfer'],
+};
+const descMap = {
+  3: 'A comfortable, well-located hotel offering all the essentials for a great stay. Clean rooms, friendly staff and easy access to the city\'s main attractions make it a popular choice for both business and leisure travelers.',
+  4: 'An upscale property combining stylish design with first-class amenities. Enjoy spacious rooms, an inviting pool deck, and a restaurant serving locally inspired cuisine. Perfect for those seeking comfort without compromise.',
+  5: 'An iconic luxury retreat that sets the standard for five-star hospitality. Every detail has been thoughtfully curated — from the marble-clad suites and Michelin-starred dining to the world-class spa and personalised butler service.',
+};
+const badgeColors = ['bg-emerald-50 text-emerald-700 border-emerald-200','bg-sky-50 text-sky-700 border-sky-200','bg-violet-50 text-violet-700 border-violet-200','bg-amber-50 text-amber-700 border-amber-200'];
+const quickBadges = {
+  3: ['Free cancellation','No prepayment'],
+  4: ['Free cancellation','Breakfast available','No prepayment'],
+  5: ['Free cancellation','Breakfast included','Late check-out','No prepayment'],
+};
+const roomTypes = {
+  3: [
+    {name:'Standard Room',bed:'1 double bed',size:'22 m²',multi:1.0},
+    {name:'Superior Room',bed:'2 single beds',size:'28 m²',multi:1.18},
+  ],
+  4: [
+    {name:'Deluxe Room',bed:'1 king bed',size:'35 m²',multi:1.0},
+    {name:'Superior King',bed:'1 king bed · City view',size:'42 m²',multi:1.25},
+    {name:'Junior Suite',bed:'1 king bed · Lounge area',size:'58 m²',multi:1.7},
+  ],
+  5: [
+    {name:'Premier Room',bed:'1 king bed',size:'48 m²',multi:1.0},
+    {name:'Deluxe Suite',bed:'1 king bed · Sitting room',size:'72 m²',multi:1.5},
+    {name:'Penthouse Suite',bed:'1 king bed · Panoramic views',size:'120 m²',multi:2.4},
+  ],
+};
+
+let currentHotelData = null;
+
+function openHotelDetail(card) {
+  const d = card.dataset;
+  const stars = parseInt(d.stars) || 3;
+  const basePrice = parseFloat(d.price) || 100;
+  currentHotelData = d;
+
+  document.getElementById('hd-photo').src = d.photo;
+  document.getElementById('hd-photo').alt = d.name;
+  document.getElementById('hd-name').textContent = d.name;
+  document.getElementById('hd-stars').textContent = '★'.repeat(stars) + '☆'.repeat(5 - stars);
+  document.getElementById('hd-score').textContent = d.rating;
+  document.getElementById('hd-ratingword').textContent = d.ratingword || 'Excellent';
+  const reviewCount = 800 + stars * 400 + Math.floor(parseFloat(d.id || 0) * 73) % 900;
+  document.getElementById('hd-reviews').textContent = reviewCount.toLocaleString() + ' verified reviews';
+  document.getElementById('hd-desc').textContent = descMap[stars] || descMap[3];
+
+  // Badges
+  const badges = quickBadges[stars] || quickBadges[3];
+  document.getElementById('hd-badges').innerHTML = badges.map((b, i) =>
+    `<span class="text-xs font-semibold px-3 py-1 rounded-full border ${badgeColors[i % badgeColors.length]}">${b}</span>`
+  ).join('');
+
+  // Amenities
+  const amenities = amenityMap[stars] || amenityMap[3];
+  document.getElementById('hd-amenities').innerHTML = amenities.map(a =>
+    `<div class="flex items-center gap-2 text-sm text-gray-700 bg-gray-50 rounded-xl px-3 py-2">
+      <span class="text-indigo-400 text-base">✓</span>${a}
+    </div>`
+  ).join('');
+
+  // Rooms
+  const rooms = roomTypes[stars] || roomTypes[3];
+  document.getElementById('hd-rooms').innerHTML = rooms.map(r => {
+    const price = Math.round(basePrice * r.multi);
+    return `<div class="flex items-center justify-between bg-slate-50 rounded-2xl p-4 border border-gray-100">
+      <div>
+        <p class="font-bold text-gray-900 text-sm">${r.name}</p>
+        <p class="text-xs text-gray-400 mt-0.5">${r.bed} · ${r.size}</p>
+      </div>
+      <div class="text-right flex flex-col items-end gap-2">
+        <div><span class="text-xl font-extrabold text-gray-900">$${price}</span><span class="text-xs text-gray-400">/night</span></div>
+        <button onclick="selectHotelRoom(${price})" class="text-xs font-bold text-white px-4 py-2 rounded-xl transition-all"
+          style="background:linear-gradient(135deg,#4f46e5,#7c3aed)">Book this room</button>
+      </div>
+    </div>`;
+  }).join('');
+
+  document.getElementById('hotel-detail-modal').classList.remove('hidden');
+}
+
+function closeHotelDetail() {
+  document.getElementById('hotel-detail-modal').classList.add('hidden');
+}
+
+function selectHotelRoom(price) {
+  closeHotelDetail();
+  const d = currentHotelData;
+  openBookingModal({
+    type: 'hotel',
+    hotelId: d.id,
+    name: d.name,
+    price: price,
+    checkin: document.getElementById('checkin')?.value || '',
+    checkout: document.getElementById('checkout')?.value || '',
+  });
+}
+
 function debounce(fn, ms) {
   let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
 }
@@ -1795,6 +2136,143 @@ function submitFlightForm(e) {
   });
   setLoading(e.target);
   e.target.submit();
+}
+
+// ── Car booking ───────────────────────────────────────────────────────────────
+function openCarBooking(card) {
+  const d = card.dataset;
+  openBookingModal({
+    type: 'hotel',
+    hotelId: d.car.replace(/\s/g,'-'),
+    name: d.car + (d.pickup ? ' · ' + d.pickup : ''),
+    price: d.price,
+    checkin: d.pickupdate || '',
+    checkout: d.dropoff || '',
+    _btn: null,
+  });
+}
+
+let carActiveFilter = 'all';
+let carActiveTrans = 'all';
+
+function filterCars(val) {
+  const typeFilters = ['all','economy','compact','suv','luxury'];
+  const transFilters = ['auto','manual'];
+  if (typeFilters.includes(val)) {
+    carActiveFilter = val;
+    typeFilters.forEach(f => {
+      const b = document.getElementById('cf-' + f);
+      if (b) { b.classList.remove('active'); b.classList.add('text-gray-500'); }
+    });
+  } else {
+    carActiveTrans = val;
+    transFilters.forEach(f => {
+      const b = document.getElementById('cf-' + f);
+      if (b) { b.classList.remove('active'); b.classList.add('text-gray-500'); }
+    });
+  }
+  const active = document.getElementById('cf-' + val);
+  if (active) { active.classList.add('active'); active.classList.remove('text-gray-500'); }
+  applyCarFilters();
+}
+
+function sortCars(key) {
+  const grid = document.getElementById('cars-grid');
+  if (!grid) return;
+  const cards = [...grid.querySelectorAll('.car-card')];
+  cards.sort((a, b) => {
+    if (key === 'price') return parseFloat(a.dataset.price) - parseFloat(b.dataset.price);
+    if (key === 'price-desc') return parseFloat(b.dataset.price) - parseFloat(a.dataset.price);
+    if (key === 'seats') return parseInt(b.dataset.seats) - parseInt(a.dataset.seats);
+    return 0;
+  });
+  cards.forEach(c => grid.appendChild(c));
+}
+
+function applyCarFilters() {
+  document.querySelectorAll('.car-card').forEach(c => {
+    const typeOk = carActiveFilter === 'all' || c.dataset.type === carActiveFilter;
+    const transOk = carActiveTrans === 'all' || c.dataset.trans === carActiveTrans;
+    c.style.display = (typeOk && transOk) ? '' : 'none';
+  });
+}
+
+// ── Flight filters ────────────────────────────────────────────────────────────
+let flightFilters = { stops: 'any', time: 'any' };
+let flightSort = 'price';
+
+function setFlightFilter(type, val) {
+  flightFilters[type] = val;
+  document.querySelectorAll(`[id^="f-${type}-"]`).forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('text-gray-500');
+  });
+  const active = document.getElementById(`f-${type}-${val}`);
+  if (active) { active.classList.add('active'); active.classList.remove('text-gray-500'); }
+  applyFlightFilters();
+}
+
+function sortFlights(key) {
+  flightSort = key;
+  document.querySelectorAll(`[id^="f-sort-"]`).forEach(b => {
+    b.classList.remove('active');
+    b.classList.add('text-gray-500');
+  });
+  const active = document.getElementById(`f-sort-${key}`);
+  if (active) { active.classList.add('active'); active.classList.remove('text-gray-500'); }
+  applyFlightFilters();
+}
+
+function parseHour(timeStr) {
+  if (!timeStr) return 0;
+  const m = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+  if (!m) return 0;
+  let h = parseInt(m[1]);
+  const min = parseInt(m[2]);
+  const ampm = (m[3] || '').toUpperCase();
+  if (ampm === 'PM' && h !== 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h + min / 60;
+}
+
+function applyFlightFilters() {
+  const list = document.getElementById('flights-list');
+  const emptyEl = document.getElementById('flights-empty');
+  if (!list) return;
+  const cards = [...list.querySelectorAll('.flight-card')];
+  let visible = [];
+
+  cards.forEach(card => {
+    const stops = parseInt(card.dataset.stops ?? '0');
+    const depart = card.dataset.depart || '';
+    const hour = parseHour(depart);
+
+    let show = true;
+    if (flightFilters.stops !== 'any') {
+      const maxStops = parseInt(flightFilters.stops);
+      if (stops > maxStops) show = false;
+    }
+    if (show && flightFilters.time !== 'any') {
+      if (flightFilters.time === 'morning'   && (hour < 5  || hour >= 12)) show = false;
+      if (flightFilters.time === 'afternoon' && (hour < 12 || hour >= 18)) show = false;
+      if (flightFilters.time === 'evening'   && (hour < 18 || hour >= 24)) show = false;
+    }
+    card.style.display = show ? '' : 'none';
+    if (show) visible.push(card);
+  });
+
+  // Sort visible
+  visible.sort((a, b) => {
+    if (flightSort === 'price') return parseFloat(a.dataset.price||0) - parseFloat(b.dataset.price||0);
+    if (flightSort === 'duration') return parseInt(a.dataset.duration||0) - parseInt(b.dataset.duration||0);
+    if (flightSort === 'depart') return parseHour(a.dataset.depart) - parseHour(b.dataset.depart);
+    return 0;
+  });
+  visible.forEach(c => list.appendChild(c));
+
+  const countEl = document.getElementById('flights-count');
+  if (countEl) countEl.textContent = visible.length;
+  if (emptyEl) emptyEl.classList.toggle('hidden', visible.length > 0);
 }
 
 // Init

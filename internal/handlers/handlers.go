@@ -114,7 +114,7 @@ func (h *TravelHandler) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	pd.CityEntityID = entityID
 
-	hotels, err := h.ProxyClient.FetchHotels(entityID, checkin, checkout, adults, children, rooms)
+	hotels, err := h.ProxyClient.FetchHotels(city, entityID, checkin, checkout, adults, children, rooms)
 	if err != nil {
 		pd.Error = "Failed to load hotels. Please try again."
 		h.render(w, pd)

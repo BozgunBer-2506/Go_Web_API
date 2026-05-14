@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 )
@@ -261,47 +262,68 @@ func (pc *ProxyClient) SearchAirports(query string) ([]FlightDestSuggestion, err
 	return results, nil
 }
 
-// FetchHotels attempts Hotels.com search. Free tier returns empty results;
-// caller shows a Hotels.com deep link fallback when the slice is empty.
-func (pc *ProxyClient) FetchHotels(regionID, checkIn, checkOut, adults, children, rooms string) ([]HotelData, error) {
-	if adults == "" {
-		adults = "2"
+// hotelTemplates define names, stars and pricing only; photos are generated dynamically per city.
+var hotelTemplates = []struct {
+	suffix string
+	stars  int
+	base   float64
+	rating float64
+	word   string
+}{
+	{"Grand Palace Hotel", 5, 220, 9.2, "Exceptional"},
+	{"Boutique Centrale", 4, 135, 8.8, "Excellent"},
+	{"The Riverside Suites", 4, 160, 8.5, "Excellent"},
+	{"Luxury Tower & Spa", 5, 310, 9.5, "Exceptional"},
+	{"City View Residences", 3, 88, 7.9, "Good"},
+	{"Heritage Collection", 4, 175, 9.0, "Exceptional"},
+	{"The Modern Stay", 4, 145, 8.6, "Excellent"},
+	{"Skyline Boutique", 3, 99, 8.1, "Very Good"},
+	{"Art Deco Suites", 4, 195, 8.9, "Excellent"},
+	{"Garden Quarter Inn", 3, 75, 7.7, "Good"},
+	{"Panorama Rooftop Hotel", 5, 280, 9.3, "Exceptional"},
+	{"The Old Town Lodge", 3, 65, 8.0, "Very Good"},
+}
+
+// FetchHotels generates realistic mock listings for the given city.
+// (Hotels.com free tier returns no usable data, so we simulate results locally.)
+func (pc *ProxyClient) FetchHotels(city, regionID, checkIn, checkOut, adults, children, rooms string) ([]HotelData, error) {
+	// Seed a deterministic-but-varied set per city
+	seed := int64(0)
+	for _, c := range city {
+		seed = seed*31 + int64(c)
 	}
-	params := map[string]string{
-		"region_id":     regionID,
-		"checkin_date":  checkIn,
-		"checkout_date": checkOut,
-		"adults_number": adults,
-		"sort_order":    "REVIEW",
-		"page_number":   "1",
-		"locale":        "en_US",
-		"domain":        "US",
-	}
-	if children != "" && children != "0" {
-		params["children_number"] = children
+	if seed < 0 {
+		seed = -seed
 	}
 
-	resp, err := pc.doGet(hotelsBase, hotelsHost, "/v2/hotels/search", params)
-	if err != nil {
-		return nil, fmt.Errorf("hotel search failed: %w", err)
+	cityQ := url.QueryEscape(city)
+	hotels := make([]HotelData, 0, len(hotelTemplates))
+	for i := range hotelTemplates {
+		idx := (int(seed) + i) % len(hotelTemplates)
+		tpl := hotelTemplates[idx]
+		name := city + " " + tpl.suffix
+		price := tpl.base + float64((int(seed)+i)%5)*11.0
+		// Dynamic photo: Unsplash source URL searches for city+hotel so each result
+		// shows a real photo relevant to that city. sig= ensures different images per card.
+		sig := int(seed)%200 + i*17
+		photo := fmt.Sprintf("https://source.unsplash.com/600x400/?hotel,luxury,%s&sig=%d", cityQ, sig)
+		hotels = append(hotels, HotelData{
+			HotelID:    int(seed%9000) + 1000 + i,
+			HotelName:  name,
+			Price:      price,
+			Currency:   "USD",
+			Rating:     tpl.rating,
+			RatingWord: tpl.word,
+			PhotoURL:   photo,
+			Stars:      tpl.stars,
+		})
 	}
-	defer resp.Body.Close()
-
-	// Hotels.com free tier returns {"propertySearchListings":[{"__typename":"LodgingCard"},...]}
-	// with no actual property data - return empty slice so caller shows deep link fallback.
-	type hcSearchResp struct {
-		Properties []json.RawMessage `json:"properties"`
-	}
-	var payload hcSearchResp
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		return nil, fmt.Errorf("failed to decode hotel response: %w", err)
-	}
-	return []HotelData{}, nil
+	return hotels, nil
 }
 
 // FetchTravelData is kept for the /travel-data JSON endpoint.
 func (pc *ProxyClient) FetchTravelData() ([]HotelData, error) {
-	return pc.FetchHotels("2872", "2026-08-01", "2026-08-05", "2", "0", "1")
+	return pc.FetchHotels("London", "2872", "2026-08-01", "2026-08-05", "2", "0", "1")
 }
 
 // FetchFlights searches flights via Google Flights API.
@@ -371,14 +393,31 @@ func (pc *ProxyClient) FetchFlights(fromSkyID, _, toSkyID, _, date, returnDate, 
 	return flights, nil
 }
 
-// extractTime pulls "11:25 PM" from "15-06-2026 11:25 PM"
+// extractTime pulls the time from "15-06-2026 11:25 PM" and converts to 24h format ("23:25").
 func extractTime(s string) string {
-	if idx := strings.Index(s, " "); idx >= 0 {
-		rest := s[idx+1:]
-		if idx2 := strings.Index(rest, " "); idx2 >= 0 {
-			return rest
-		}
-		return rest
+	// s format: "DD-MM-YYYY HH:MM AM/PM"
+	parts := strings.Fields(s)
+	if len(parts) < 2 {
+		return s
 	}
-	return s
+	timePart := parts[1] // "11:25"
+	ampm := ""
+	if len(parts) >= 3 {
+		ampm = strings.ToUpper(parts[2]) // "AM" or "PM"
+	}
+	if ampm == "" {
+		return timePart // already 24h or unknown format
+	}
+	hm := strings.SplitN(timePart, ":", 2)
+	if len(hm) != 2 {
+		return timePart
+	}
+	hour := 0
+	fmt.Sscanf(hm[0], "%d", &hour)
+	if ampm == "PM" && hour != 12 {
+		hour += 12
+	} else if ampm == "AM" && hour == 12 {
+		hour = 0
+	}
+	return fmt.Sprintf("%02d:%s", hour, hm[1])
 }
