@@ -1,6 +1,7 @@
 package main
 
 import (
+	"embed"
 	"html/template"
 	"log"
 	"net/http"
@@ -10,8 +11,11 @@ import (
 	"travel-proxy-service/internal/proxy"
 )
 
+//go:embed templates/*.html
+var templateFiles embed.FS
+
 func main() {
-	tmpl, err := template.ParseGlob("templates/*.html")
+	tmpl, err := template.ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
 		log.Fatalf("failed to parse templates: %v", err)
 	}
