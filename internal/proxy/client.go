@@ -3,8 +3,10 @@ package proxy
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -152,11 +154,13 @@ type hcRegionResponse struct {
 
 type ProxyClient struct {
 	HTTPClient *http.Client
+	Amadeus    *AmadeusClient
 }
 
 func NewProxyClient(_ string) *ProxyClient {
 	return &ProxyClient{
 		HTTPClient: &http.Client{Timeout: 12 * time.Second},
+		Amadeus:    NewAmadeusClient(os.Getenv("AMADEUS_CLIENT_ID"), os.Getenv("AMADEUS_CLIENT_SECRET")),
 	}
 }
 
@@ -284,10 +288,8 @@ var hotelTemplates = []struct {
 	{"The Old Town Lodge", 3, 65, 8.0, "Very Good"},
 }
 
-// FetchHotels generates realistic mock listings for the given city.
-// (Hotels.com free tier returns no usable data, so we simulate results locally.)
-func (pc *ProxyClient) FetchHotels(city, regionID, checkIn, checkOut, adults, children, rooms string) ([]HotelData, error) {
-	// Seed a deterministic-but-varied set per city
+// fetchMockHotels generates deterministic mock listings seeded by city name.
+func (pc *ProxyClient) fetchMockHotels(city string) ([]HotelData, error) {
 	seed := int64(0)
 	for _, c := range city {
 		seed = seed*31 + int64(c)
@@ -295,7 +297,6 @@ func (pc *ProxyClient) FetchHotels(city, regionID, checkIn, checkOut, adults, ch
 	if seed < 0 {
 		seed = -seed
 	}
-
 	cityQ := url.QueryEscape(city)
 	hotels := make([]HotelData, 0, len(hotelTemplates))
 	for i := range hotelTemplates {
@@ -303,8 +304,6 @@ func (pc *ProxyClient) FetchHotels(city, regionID, checkIn, checkOut, adults, ch
 		tpl := hotelTemplates[idx]
 		name := city + " " + tpl.suffix
 		price := tpl.base + float64((int(seed)+i)%5)*11.0
-		// Dynamic photo: Unsplash source URL searches for city+hotel so each result
-		// shows a real photo relevant to that city. sig= ensures different images per card.
 		sig := int(seed)%200 + i*17
 		photo := fmt.Sprintf("https://source.unsplash.com/600x400/?hotel,luxury,%s&sig=%d", cityQ, sig)
 		hotels = append(hotels, HotelData{
@@ -321,9 +320,27 @@ func (pc *ProxyClient) FetchHotels(city, regionID, checkIn, checkOut, adults, ch
 	return hotels, nil
 }
 
-// FetchTravelData is kept for the /travel-data JSON endpoint.
+// FetchHotels tries Amadeus live data first; falls back to mock if not configured or on error.
+func (pc *ProxyClient) FetchHotels(city, regionID, checkIn, checkOut, adults, children, rooms string) ([]HotelData, error) {
+	if pc.Amadeus.Enabled() {
+		cityCode, err := pc.Amadeus.LookupCityCode(city)
+		if err != nil {
+			log.Printf("amadeus city lookup failed (%v), using mock", err)
+		} else {
+			hotels, err := pc.Amadeus.FetchHotelsByCity(city, cityCode, checkIn, checkOut, adults, rooms)
+			if err != nil {
+				log.Printf("amadeus hotel fetch failed (%v), using mock", err)
+			} else {
+				return hotels, nil
+			}
+		}
+	}
+	return pc.fetchMockHotels(city)
+}
+
+// FetchTravelData is kept for the /travel-data JSON endpoint (always mock).
 func (pc *ProxyClient) FetchTravelData() ([]HotelData, error) {
-	return pc.FetchHotels("London", "2872", "2026-08-01", "2026-08-05", "2", "0", "1")
+	return pc.fetchMockHotels("London")
 }
 
 // FetchFlights searches flights via Google Flights API.
