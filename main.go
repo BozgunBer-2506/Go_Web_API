@@ -51,6 +51,7 @@ func main() {
 	mux.HandleFunc("/suggest", travelHandler.SuggestHandler)
 	mux.HandleFunc("/suggest-flight", travelHandler.SuggestFlightHandler)
 	mux.HandleFunc("/travel-data", travelHandler.GetTravelDataHandler)
+	mux.HandleFunc("/contact", travelHandler.ContactHandler)
 	mux.HandleFunc("/status", handlers.HealthCheckHandler)
 
 	port := os.Getenv("PORT")

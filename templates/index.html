@@ -1960,14 +1960,39 @@ function openContact() { document.getElementById('contact-modal').classList.remo
 function closeContact() { document.getElementById('contact-modal').classList.add('hidden'); }
 function submitContact(e) {
   e.preventDefault();
-  document.getElementById('contact-form').classList.add('hidden');
-  document.getElementById('contact-success').classList.remove('hidden');
-  setTimeout(() => {
-    closeContact();
-    document.getElementById('contact-form').classList.remove('hidden');
-    document.getElementById('contact-success').classList.add('hidden');
-    e.target.reset();
-  }, 2500);
+  const btn = e.target.querySelector('button[type="submit"]');
+  const origText = btn.textContent;
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  const payload = {
+    name:    document.getElementById('contact-name').value.trim(),
+    email:   document.getElementById('contact-email').value.trim(),
+    message: document.getElementById('contact-message').value.trim(),
+  };
+
+  fetch('/contact', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      document.getElementById('contact-form').classList.add('hidden');
+      document.getElementById('contact-success').classList.remove('hidden');
+      setTimeout(() => {
+        closeContact();
+        document.getElementById('contact-form').classList.remove('hidden');
+        document.getElementById('contact-success').classList.add('hidden');
+        e.target.reset();
+      }, 2500);
+    } else {
+      showToast(data.error || 'Failed to send message.', true);
+    }
+  })
+  .catch(() => showToast('Network error. Please try again.', true))
+  .finally(() => { btn.disabled = false; btn.textContent = origText; });
 }
 
 function toggleMobileMenu() {
