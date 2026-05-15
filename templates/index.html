@@ -356,7 +356,7 @@
     <nav class="hidden md:flex items-center gap-1">
       <a href="/" class="px-4 py-2 rounded-full text-sm font-semibold transition-all {{if eq .Tab "hotels"}}bg-white text-indigo-700 shadow-lg{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Hotels</a>
       <a href="/flights" class="px-4 py-2 rounded-full text-sm font-semibold transition-all {{if eq .Tab "flights"}}bg-white text-indigo-700 shadow-lg{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Flights</a>
-      <a href="/cars" class="px-4 py-2 rounded-full text-sm font-semibold transition-all {{if eq .Tab "cars"}}bg-white text-indigo-700 shadow-lg{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Rent a Car</a>
+      <a href="/cars" class="px-4 py-2 rounded-full text-sm font-semibold transition-all {{if eq .Tab "cars"}}bg-white text-indigo-700 shadow-lg{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Car Rentals</a>
       <button onclick="toggleBookings()" class="relative ml-2 px-4 py-2 rounded-full text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10 transition-all">
         Bookings
         <span id="booking-badge" class="hidden absolute -top-1 -right-1 bg-rose-500 text-white text-xs font-bold w-5 h-5 rounded-full items-center justify-center"></span>
@@ -375,7 +375,7 @@
   <div id="mobile-menu" class="hidden md:hidden mt-3 pb-2 border-t border-white/20 pt-3 flex flex-col gap-1">
     <a href="/" class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all {{if eq .Tab "hotels"}}bg-white text-indigo-700{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Hotels</a>
     <a href="/flights" class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all {{if eq .Tab "flights"}}bg-white text-indigo-700{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Flights</a>
-    <a href="/cars" class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all {{if eq .Tab "cars"}}bg-white text-indigo-700{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Rent a Car</a>
+    <a href="/cars" class="px-4 py-2.5 rounded-xl text-sm font-semibold transition-all {{if eq .Tab "cars"}}bg-white text-indigo-700{{else}}text-white/75 hover:text-white hover:bg-white/10{{end}}">Car Rentals</a>
     <button onclick="toggleBookings();toggleMobileMenu()" class="relative text-left px-4 py-2.5 rounded-xl text-sm font-semibold text-white/75 hover:text-white hover:bg-white/10 transition-all">
       Bookings
       <span id="booking-badge-mobile" class="hidden absolute top-1.5 left-24 bg-rose-500 text-white text-xs font-bold w-5 h-5 rounded-full items-center justify-center"></span>
@@ -397,7 +397,7 @@
     </div>
     {{else if eq .Tab "cars"}}
     <div class="text-center mb-8">
-      <h2 class="text-4xl font-extrabold text-white mb-2">Rent a car anywhere</h2>
+      <h2 class="text-4xl font-extrabold text-white mb-2">Car Rentals worldwide</h2>
       <p class="text-indigo-200 text-base">Compare prices from top rental brands worldwide</p>
     </div>
     {{else}}
@@ -1099,7 +1099,7 @@
   <!-- ── SEARCH RESULTS ─────────────────────────────────────────────────── -->
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
     <div>
-      <h2 class="text-2xl font-extrabold text-gray-900">Rent a Car in <span class="text-indigo-600">{{.PickupCity}}</span></h2>
+      <h2 class="text-2xl font-extrabold text-gray-900">Car Rentals in <span class="text-indigo-600">{{.PickupCity}}</span></h2>
       <p class="text-sm text-gray-400 mt-1">{{.PickupDate}} — {{.DropoffDate}} · Driver age {{.DriverAge}}</p>
     </div>
   </div>
