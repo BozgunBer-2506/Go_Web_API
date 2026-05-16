@@ -52,6 +52,7 @@ type pageData struct {
 	PickupDate   string
 	DropoffDate  string
 	DriverAge    string
+	Nights       int
 	Error        string
 }
 
@@ -101,7 +102,16 @@ func (h *TravelHandler) HomeHandler(w http.ResponseWriter, r *http.Request) {
 	if children == "" { children = "0" }
 	if rooms == "" { rooms = "1" }
 
-	pd := pageData{Tab: "hotels", City: city, Checkin: checkin, Checkout: checkout, Adults: adults, Children: children, Rooms: rooms}
+	nights := 4
+	if t1, e1 := time.Parse("2006-01-02", checkin); e1 == nil {
+		if t2, e2 := time.Parse("2006-01-02", checkout); e2 == nil {
+			if d := int(t2.Sub(t1).Hours() / 24); d > 0 {
+				nights = d
+			}
+		}
+	}
+
+	pd := pageData{Tab: "hotels", City: city, Checkin: checkin, Checkout: checkout, Adults: adults, Children: children, Rooms: rooms, Nights: nights}
 
 	if entityID == "" {
 		var err error

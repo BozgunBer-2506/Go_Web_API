@@ -570,9 +570,9 @@
         </div>
         <span class="text-white/50 text-xs">🌙</span>
       </button>
-      <!-- Currency selector -->
+      <!-- Currency selector - desktop only -->
       <select id="currency-select" onchange="setCurrency(this.value)"
-        class="text-xs font-bold rounded-full border border-white/30 bg-transparent text-white cursor-pointer outline-none px-3 py-1.5"
+        class="hidden md:block text-xs font-bold rounded-full border border-white/30 text-white cursor-pointer outline-none px-3 py-1.5"
         style="appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.1);min-width:72px;text-align:center">
         <option value="EUR" style="background:#312e81;color:#fff">€ EUR</option>
         <option value="USD" style="background:#312e81;color:#fff">$ USD</option>
@@ -583,9 +583,9 @@
         Sign In
       </button>
       <button id="hamburger-btn" onclick="toggleMobileMenu()" class="md:hidden flex flex-col justify-center gap-1.5 w-9 h-9 p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-        <span class="block h-0.5 bg-white rounded-full transition-all"></span>
-        <span class="block h-0.5 bg-white rounded-full transition-all"></span>
-        <span class="block h-0.5 bg-white rounded-full transition-all"></span>
+        <span class="block h-0.5 rounded-full transition-all" style="background:#ffffff"></span>
+        <span class="block h-0.5 rounded-full transition-all" style="background:#ffffff"></span>
+        <span class="block h-0.5 rounded-full transition-all" style="background:#ffffff"></span>
       </button>
     </div>
   </div>
@@ -607,6 +607,17 @@
         <div id="theme-knob-mobile" class="absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform duration-200"></div>
       </div>
     </button>
+    <!-- Currency in mobile menu -->
+    <div class="flex items-center gap-3 px-4 py-2.5">
+      <span class="text-sm font-semibold text-white/75">Currency</span>
+      <select id="currency-select-mobile" onchange="setCurrency(this.value)"
+        class="ml-auto text-xs font-bold rounded-full border border-white/30 text-white cursor-pointer outline-none px-3 py-1.5"
+        style="appearance:none;-webkit-appearance:none;background:rgba(255,255,255,0.15);min-width:80px;text-align:center">
+        <option value="EUR" style="background:#312e81;color:#fff">€ EUR</option>
+        <option value="USD" style="background:#312e81;color:#fff">$ USD</option>
+        <option value="TRY" style="background:#312e81;color:#fff">₺ TRY</option>
+      </select>
+    </div>
   </div>
 </header>
 
@@ -775,23 +786,26 @@
 
         <!-- OW / RT fields -->
         <div id="ow-rt-form" class="{{if eq .TripType "multi"}}hidden{{end}} flex flex-col lg:flex-row gap-3 lg:items-end">
-          <div class="field-wrapper flex-1">
-            <span class="field-label">From</span>
-            <input id="from-display" type="text" autocomplete="off" placeholder="City or airport"
-              value="{{.FromSkyID}}" class="field-input" />
-            <input name="fromSky" id="from-sky" type="hidden" value="{{.FromSkyID}}" />
-            <input name="fromEntity" id="from-entity" type="hidden" value="{{.FromEntityID}}" />
-          </div>
-          <!-- swap button -->
-          <button type="button" class="hidden lg:flex w-10 h-10 rounded-full border border-gray-200 items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors mb-3 shrink-0" onclick="swapAirports()">
-            ⇄
-          </button>
-          <div class="field-wrapper flex-1">
-            <span class="field-label">To</span>
-            <input id="to-display" type="text" autocomplete="off" placeholder="City or airport"
-              value="{{.ToSkyID}}" class="field-input" />
-            <input name="toSky" id="to-sky" type="hidden" value="{{.ToSkyID}}" />
-            <input name="toEntity" id="to-entity" type="hidden" value="{{.ToEntityID}}" />
+          <!-- From/To row on mobile -->
+          <div class="flex flex-col sm:flex-row gap-3 flex-1 lg:contents">
+            <div class="field-wrapper flex-1 w-full">
+              <span class="field-label">From</span>
+              <input id="from-display" type="text" autocomplete="off" placeholder="City or airport"
+                value="{{.FromSkyID}}" class="field-input" />
+              <input name="fromSky" id="from-sky" type="hidden" value="{{.FromSkyID}}" />
+              <input name="fromEntity" id="from-entity" type="hidden" value="{{.FromEntityID}}" />
+            </div>
+            <!-- swap button - desktop only -->
+            <button type="button" class="hidden lg:flex w-10 h-10 rounded-full border border-gray-200 items-center justify-center text-gray-400 hover:border-indigo-300 hover:text-indigo-500 transition-colors mb-3 shrink-0" onclick="swapAirports()">
+              ⇄
+            </button>
+            <div class="field-wrapper flex-1 w-full">
+              <span class="field-label">To</span>
+              <input id="to-display" type="text" autocomplete="off" placeholder="City or airport"
+                value="{{.ToSkyID}}" class="field-input" />
+              <input name="toSky" id="to-sky" type="hidden" value="{{.ToSkyID}}" />
+              <input name="toEntity" id="to-entity" type="hidden" value="{{.ToEntityID}}" />
+            </div>
           </div>
           <div class="field-wrapper w-full lg:w-44">
             <span class="field-label">Departure</span>
@@ -961,8 +975,9 @@
         <div style="font-size:11px;color:var(--text-muted);margin-bottom:12px">{{.RatingWord}}</div>
         <div style="display:flex;align-items:center;justify-content:space-between;padding-top:12px;border-top:1px solid var(--border);margin-top:auto">
           <div>
-            <span class="price-display" data-usd="{{printf "%.2f" .Price}}" style="font-size:21px;font-weight:800;color:var(--text-primary)">$0</span>
+            <span class="price-display" data-usd="{{printf "%.2f" .Price}}" style="font-size:19px;font-weight:800;color:var(--text-primary)">$0</span>
             <span style="font-size:11px;color:var(--text-muted);margin-left:2px">/night</span>
+            <div class="price-total" data-nights="{{$.Nights}}" style="font-size:10px;color:var(--text-muted);margin-top:1px"></div>
           </div>
           <span style="font-size:11px;font-weight:600;color:#6366f1;border:1px solid rgba(99,102,241,0.4);padding:5px 12px;border-radius:10px">View →</span>
         </div>
@@ -1461,7 +1476,11 @@
         <span class="text-indigo-600">{{if .FromCity}}{{.FromCity}}{{else}}{{.FromSkyID}}{{end}}</span>
         {{end}}
       </h2>
-      <p class="text-sm text-gray-400 mt-1"><span id="flights-count">{{len .Flights}}</span> flights found</p>
+      <div class="flex items-center gap-3 mt-1 flex-wrap">
+        {{if .Date}}<span class="text-sm font-semibold text-indigo-500">{{.Date}}</span>{{end}}
+        {{if .ReturnDate}}<span class="text-gray-300">→</span><span class="text-sm font-semibold text-indigo-500">{{.ReturnDate}}</span>{{end}}
+        <span class="text-sm text-gray-400">· <span id="flights-count">{{len .Flights}}</span> flights found</span>
+      </div>
     </div>
   </div>
   {{end}}
@@ -2092,38 +2111,37 @@ function renderBookings() {
   b.forEach(item => {
     const div = document.createElement('div');
     div.className = 'booking-item';
-    div.style.cssText = 'border-radius:16px;border:1px solid rgba(99,102,241,0.2);background:rgba(99,102,241,0.06);margin-bottom:10px;overflow:hidden;cursor:pointer';
+    div.style.cssText = 'border-radius:14px;border:1px solid var(--border);background:var(--bg-card);margin-bottom:8px;overflow:hidden';
     const icon = item.type === 'flight' ? '✈️' : item.type === 'car' ? '🚗' : '🏨';
     const sub = item.type === 'flight'
-      ? `${item.from || ''} → ${item.to || ''} · ${item.airline || ''}`
-      : item.type === 'car' ? `${item.pickup || ''} · Pick-up ${item.pickupDate || ''}`
-      : `$${item.price || ''}/night`;
+      ? `${item.from || ''} → ${item.to || ''}`
+      : item.type === 'car' ? (item.pickup || 'Car rental')
+      : `${item.price ? '$'+item.price : ''}/night`;
+    const itemJson = JSON.stringify(item).replace(/"/g,'&quot;');
     div.innerHTML = `
-      <div onclick="this.nextElementSibling.classList.toggle('hidden')" style="display:flex;align-items:center;gap:10px;padding:14px 16px">
-        <span style="font-size:22px">${icon}</span>
+      <div onclick="this.parentElement.querySelector('.bk-actions').classList.toggle('hidden')"
+        style="display:flex;align-items:center;gap:12px;padding:13px 15px;cursor:pointer">
+        <span style="font-size:24px;flex-shrink:0">${icon}</span>
         <div style="flex:1;min-width:0">
-          <p style="font-weight:700;font-size:13px;color:#0f172a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name}</p>
-          <p style="font-size:11px;color:#64748b;margin-top:2px">${sub}</p>
-          ${item.ref ? `<p style="font-size:10px;font-weight:700;color:#6366f1;margin-top:2px">Ref: ${item.ref}</p>` : ''}
+          <p style="font-weight:700;font-size:13px;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${item.name || 'Booking'}</p>
+          <p style="font-size:11px;color:var(--text-muted);margin-top:1px">${sub}</p>
         </div>
-        <span style="font-size:10px;color:#94a3b8;flex-shrink:0">${new Date(item.at).toLocaleDateString()}</span>
+        <div style="text-align:right;flex-shrink:0">
+          ${item.ref ? `<p style="font-size:10px;font-weight:700;color:#6366f1">Ref: ${item.ref}</p>` : ''}
+          <p style="font-size:10px;color:var(--text-muted);margin-top:2px">${new Date(item.at).toLocaleDateString()}</p>
+        </div>
+        <span style="color:var(--text-muted);font-size:12px;margin-left:4px">›</span>
       </div>
-      <div class="hidden" style="border-top:1px solid rgba(99,102,241,0.15);padding:12px 16px;display:flex;gap:8px;flex-wrap:wrap">
-        <button onclick="shareToWhatsApp(${JSON.stringify(item).replace(/"/g,'&quot;')})"
-          style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;background:#25d366;color:#fff;border:none;cursor:pointer">
-          💬 WhatsApp
-        </button>
-        <button onclick="addToCalendar(${JSON.stringify(item).replace(/"/g,'&quot;')})"
-          style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;background:#4f46e5;color:#fff;border:none;cursor:pointer">
-          📅 Calendar
-        </button>
-        <button onclick="shareBooking(${JSON.stringify(item).replace(/"/g,'&quot;')})"
-          style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;background:#0ea5e9;color:#fff;border:none;cursor:pointer">
-          🔗 Share
-        </button>
+      <div class="bk-actions hidden" style="border-top:1px solid var(--border);padding:10px 12px;display:flex;align-items:center;gap:8px">
+        <button onclick="shareToWhatsApp(${itemJson})" title="WhatsApp"
+          style="width:36px;height:36px;border-radius:50%;background:#25d366;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">💬</button>
+        <button onclick="addToCalendar(${itemJson})" title="Add to calendar"
+          style="width:36px;height:36px;border-radius:50%;background:#4f46e5;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">📅</button>
+        <button onclick="shareBooking(${itemJson})" title="Share"
+          style="width:36px;height:36px;border-radius:50%;background:#0ea5e9;border:none;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center">🔗</button>
         <button onclick="cancelBooking(${item.id})"
-          style="display:flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:6px 12px;border-radius:20px;background:#fee2e2;color:#dc2626;border:none;cursor:pointer;margin-left:auto">
-          🗑 Cancel
+          style="margin-left:auto;font-size:11px;font-weight:600;padding:6px 14px;border-radius:20px;background:transparent;color:#dc2626;border:1px solid #fca5a5;cursor:pointer">
+          Cancel
         </button>
       </div>`;
     list.appendChild(div);
@@ -2198,8 +2216,10 @@ const CURRENCY_SYMBOLS = { EUR: '€', USD: '$', TRY: '₺' };
 
 function setCurrency(code) {
   localStorage.setItem('currency', code);
-  const sel = document.getElementById('currency-select');
-  if (sel && sel.value !== code) sel.value = code;
+  ['currency-select','currency-select-mobile'].forEach(id => {
+    const s = document.getElementById(id);
+    if (s && s.value !== code) s.value = code;
+  });
   applyPrices();
 }
 
@@ -2207,12 +2227,22 @@ function applyPrices() {
   const code = localStorage.getItem('currency') || 'EUR';
   const rate = CURRENCY_RATES[code] || 1;
   const sym = CURRENCY_SYMBOLS[code] || '€';
-  const sel = document.getElementById('currency-select');
-  if (sel && sel.value !== code) sel.value = code;
+  ['currency-select','currency-select-mobile'].forEach(id => {
+    const s = document.getElementById(id);
+    if (s && s.value !== code) s.value = code;
+  });
   document.querySelectorAll('.price-display').forEach(el => {
     const usd = parseFloat(el.dataset.usd) || 0;
     const converted = Math.round(usd * rate);
     el.textContent = sym + converted.toLocaleString();
+  });
+  document.querySelectorAll('.price-total').forEach(el => {
+    const nights = parseInt(el.dataset.nights) || 0;
+    if (nights < 2) { el.textContent = ''; return; }
+    const priceSpan = el.closest('div').querySelector('.price-display');
+    const usd = priceSpan ? parseFloat(priceSpan.dataset.usd) || 0 : 0;
+    const total = Math.round(usd * rate * nights);
+    el.textContent = sym + total.toLocaleString() + ' total · ' + nights + ' nights';
   });
 }
 
