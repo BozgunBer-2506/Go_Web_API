@@ -175,10 +175,29 @@
     /* Modal & drawer overrides */
     [data-theme="dark"] #bookings-drawer,
     [data-theme="dark"] #hotel-detail-modal > div,
+    [data-theme="dark"] #booking-modal > div,
     [data-theme="dark"] #contact-modal > div,
     [data-theme="dark"] #privacy-modal > div {
       background: var(--bg-card) !important;
       color: var(--text-primary) !important;
+    }
+    [data-theme="dark"] #booking-modal .bg-white,
+    [data-theme="dark"] #booking-modal .bg-slate-50,
+    [data-theme="dark"] #booking-modal .bg-gray-50 {
+      background: var(--bg-card2) !important;
+    }
+    [data-theme="dark"] #booking-modal .text-gray-900,
+    [data-theme="dark"] #booking-modal .text-gray-800 { color: var(--text-primary) !important; }
+    [data-theme="dark"] #booking-modal .text-gray-600,
+    [data-theme="dark"] #booking-modal .text-gray-500 { color: var(--text-secondary) !important; }
+    [data-theme="dark"] #booking-modal .text-gray-400 { color: var(--text-muted) !important; }
+    [data-theme="dark"] #booking-modal .border-gray-200,
+    [data-theme="dark"] #booking-modal .border-gray-100 { border-color: var(--border) !important; }
+    [data-theme="dark"] #booking-modal input,
+    [data-theme="dark"] #booking-modal select {
+      background: var(--bg-card2) !important;
+      color: var(--text-primary) !important;
+      border-color: var(--border) !important;
     }
     [data-theme="dark"] #bookings-drawer input,
     [data-theme="dark"] #bookings-drawer select,
