@@ -19,6 +19,9 @@ var templateFiles embed.FS
 //go:embed images/*
 var imageFiles embed.FS
 
+//go:embed static/*
+var staticFiles embed.FS
+
 func main() {
 	tmpl, err := template.ParseFS(templateFiles, "templates/*.html")
 	if err != nil {
@@ -44,6 +47,16 @@ func main() {
 
 	mux := http.NewServeMux()
 	mux.Handle("/images/", http.FileServerFS(imageFiles))
+	mux.Handle("/static/", http.FileServerFS(staticFiles))
+	mux.HandleFunc("/manifest.json", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/manifest+json")
+		http.ServeFileFS(w, r, staticFiles, "static/manifest.json")
+	})
+	mux.HandleFunc("/sw.js", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/javascript")
+		w.Header().Set("Service-Worker-Allowed", "/")
+		http.ServeFileFS(w, r, staticFiles, "static/sw.js")
+	})
 	mux.HandleFunc("/", travelHandler.HomeHandler)
 	mux.HandleFunc("/flights", travelHandler.FlightsHandler)
 	mux.HandleFunc("/cars", travelHandler.CarsHandler)
